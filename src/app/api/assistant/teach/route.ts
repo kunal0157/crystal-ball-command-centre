@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from '../../../../lib/next-server-shim.ts';
 import { APPROVALS_FIXTURE } from '../../../../lib/fixtures.ts';
 import { TeachRequestSchema } from '../../../../lib/schemas.ts';
 import { buildTeachSystemPrompt } from '../../../../prompts/teach.ts';

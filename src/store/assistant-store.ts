@@ -19,9 +19,13 @@ interface AssistantState {
   activeMode: AssistantMode;
   sessionId: string;
 
-  // Queue Data
+  // Queue Data & UI filters
   approvals: ApprovalItem[];
   selectedItem: ApprovalItem | null;
+  searchQuery: string;
+  activeView: 'queue' | 'hierarchy';
+  activeTab: 'snapshot' | 'media';
+  activeNav: string;
 
   // Assistant Responses & History
   greeting: GreetingResponse | null;
@@ -29,10 +33,14 @@ interface AssistantState {
   messages: ChatMessageItem[];
   teachStep: number;
 
-  // Status flags
+  // Status flags & features
   isLoading: boolean;
   isStreaming: boolean;
   error: string | null;
+  isSpeaking: boolean;
+  isHelpModalOpen: boolean;
+  notificationCount: number;
+  toastMessage: string | null;
 
   // Actions
   setIsOpen: (open: boolean) => void;
@@ -40,6 +48,19 @@ interface AssistantState {
   setActiveMode: (mode: AssistantMode) => void;
   setApprovals: (items: ApprovalItem[]) => void;
   setSelectedItem: (item: ApprovalItem | null) => void;
+  setSearchQuery: (query: string) => void;
+  setActiveView: (view: 'queue' | 'hierarchy') => void;
+  setActiveTab: (tab: 'snapshot' | 'media') => void;
+  setActiveNav: (nav: string) => void;
+  setIsHelpModalOpen: (open: boolean) => void;
+  setIsSpeaking: (speaking: boolean) => void;
+  showToast: (msg: string) => void;
+  clearToast: () => void;
+
+  // Real Queue Operations
+  approveItem: (id: string) => void;
+  rejectItem: (id: string, reason?: string) => void;
+
   setGreeting: (greeting: GreetingResponse | null) => void;
   setSummary: (summary: SummaryResponse | null) => void;
   addMessage: (msg: Omit<ChatMessageItem, 'id' | 'timestamp'>) => string;
@@ -61,6 +82,10 @@ export const useAssistantStore = create<AssistantState>((set, get) => ({
 
   approvals: [],
   selectedItem: null,
+  searchQuery: '',
+  activeView: 'queue',
+  activeTab: 'snapshot',
+  activeNav: 'dashboard',
 
   greeting: null,
   summary: null,
@@ -70,12 +95,66 @@ export const useAssistantStore = create<AssistantState>((set, get) => ({
   isLoading: false,
   isStreaming: false,
   error: null,
+  isSpeaking: false,
+  isHelpModalOpen: false,
+  notificationCount: 3,
+  toastMessage: null,
 
   setIsOpen: (isOpen) => set({ isOpen }),
   setIsMinimized: (isMinimized) => set({ isMinimized }),
   setActiveMode: (activeMode) => set({ activeMode, error: null }),
-  setApprovals: (approvals) => set({ approvals }),
+  setApprovals: (approvals) => {
+    set({ approvals });
+    if (!get().selectedItem && approvals.length > 0) {
+      set({ selectedItem: approvals[0] });
+    }
+  },
   setSelectedItem: (selectedItem) => set({ selectedItem }),
+  setSearchQuery: (searchQuery) => set({ searchQuery }),
+  setActiveView: (activeView) => set({ activeView }),
+  setActiveTab: (activeTab) => set({ activeTab }),
+  setActiveNav: (activeNav) => set({ activeNav }),
+  setIsHelpModalOpen: (isHelpModalOpen) => set({ isHelpModalOpen }),
+  setIsSpeaking: (isSpeaking) => set({ isSpeaking }),
+
+  showToast: (msg) => {
+    set({ toastMessage: msg });
+    setTimeout(() => {
+      if (get().toastMessage === msg) {
+        set({ toastMessage: null });
+      }
+    }, 3500);
+  },
+  clearToast: () => set({ toastMessage: null }),
+
+  approveItem: (id) => {
+    set((state) => {
+      const updated = state.approvals.map((item) =>
+        item.id === id ? { ...item, status: 'Approved' } : item
+      );
+      const target = state.approvals.find((i) => i.id === id);
+      return {
+        approvals: updated,
+        selectedItem: state.selectedItem?.id === id ? { ...state.selectedItem, status: 'Approved' } : state.selectedItem,
+        notificationCount: Math.max(0, state.notificationCount - 1),
+      };
+    });
+    get().showToast('Item approved and synchronized with HMS Digital Twin!');
+  },
+
+  rejectItem: (id, reason = 'Compliance check incomplete') => {
+    set((state) => {
+      const updated = state.approvals.map((item) =>
+        item.id === id ? { ...item, status: 'Rejected' } : item
+      );
+      return {
+        approvals: updated,
+        selectedItem: state.selectedItem?.id === id ? { ...state.selectedItem, status: 'Rejected' } : state.selectedItem,
+      };
+    });
+    get().showToast(`Item rejected: ${reason}`);
+  },
+
   setGreeting: (greeting) => set({ greeting }),
   setSummary: (summary) => set({ summary }),
 

@@ -26,3 +26,4 @@ export class NextResponse<Body = any> extends Response {
     }) as NextResponse;
   }
 }
+

@@ -76,3 +76,4 @@ export const GreetingResponseSchema = z.object({
 });
 
 export type GreetingResponse = z.infer<typeof GreetingResponseSchema>;
+

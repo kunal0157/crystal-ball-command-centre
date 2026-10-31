@@ -19,9 +19,12 @@ declare module 'lucide-react' {
   export const Lightbulb: LucideIcon;
   export const CheckCircle2: LucideIcon;
   export const ChevronRight: LucideIcon;
+  export const ChevronLeft: LucideIcon;
+  export const ChevronDown: LucideIcon;
   export const BookOpen: LucideIcon;
   export const RotateCcw: LucideIcon;
   export const X: LucideIcon;
+  export const Check: LucideIcon;
   export const Minimize2: LucideIcon;
   export const Maximize2: LucideIcon;
   export const Info: LucideIcon;
@@ -47,6 +50,16 @@ declare module 'lucide-react' {
   export const Compass: LucideIcon;
   export const FileCheck: LucideIcon;
   export const FolderOpen: LucideIcon;
+  export const FolderTree: LucideIcon;
   export const BarChart3: LucideIcon;
   export const FlaskConical: LucideIcon;
+  export const Volume2: LucideIcon;
+  export const VolumeX: LucideIcon;
+  export const Play: LucideIcon;
+  export const Pause: LucideIcon;
+  export const ZoomIn: LucideIcon;
+  export const ZoomOut: LucideIcon;
+  export const ShieldCheck: LucideIcon;
+  export const ShieldAlert: LucideIcon;
+  export const Download: LucideIcon;
 }

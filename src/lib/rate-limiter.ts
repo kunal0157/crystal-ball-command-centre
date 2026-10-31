@@ -43,3 +43,4 @@ export function checkRateLimit(sessionId: string): { allowed: boolean; remaining
     resetInSec: Math.ceil((record.resetAt - now) / 1000),
   };
 }
+

@@ -79,3 +79,4 @@ export function retrieveRelevantChunks(query: string, limit = 2): PolicyChunk[] 
   scored.sort((a, b) => b.score - a.score);
   return scored.slice(0, limit).map((s) => s.chunk);
 }
+

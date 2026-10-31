@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server';
+import { NextResponse } from '../../../lib/next-server-shim.ts';
 import { APPROVALS_FIXTURE } from '@/lib/fixtures.ts';
 
 export async function GET() {

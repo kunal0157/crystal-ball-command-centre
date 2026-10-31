@@ -29,3 +29,4 @@ Instructions:
 3. If the user asks a follow-up question or clarification, adapt your explanation to address their confusion before summarizing the step.
 4. Conclude with a helpful prompt inviting them to ask questions or proceed to the next step.`;
 }
+

@@ -8,8 +8,15 @@ import {
   AlertTriangle,
   Lightbulb,
   CheckCircle2,
+  Volume2,
+  VolumeX,
+  Sparkles,
+  Camera,
+  Check,
   ChevronRight,
-  BookOpen,
+  ChevronLeft,
+  FileText,
+  Search,
 } from 'lucide-react';
 import { useAssistantStore } from '@/store/assistant-store';
 import { StreamingMessage } from './StreamingMessage';
@@ -32,6 +39,12 @@ export function ChatPanel() {
     summary,
     teachStep,
     setTeachStep,
+    approveItem,
+    setSelectedItem,
+    setActiveTab,
+    isSpeaking,
+    setIsSpeaking,
+    showToast,
   } = useAssistantStore();
 
   const [input, setInput] = useState('');
@@ -41,12 +54,33 @@ export function ChatPanel() {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, isStreaming]);
 
+  // Web Speech API for "out loud" summary read-back
+  const handleToggleSpeech = (text: string) => {
+    if (typeof window === 'undefined' || !('speechSynthesis' in window)) {
+      showToast('Speech synthesis not supported in this browser.');
+      return;
+    }
+
+    if (isSpeaking) {
+      window.speechSynthesis.cancel();
+      setIsSpeaking(false);
+      return;
+    }
+
+    window.speechSynthesis.cancel();
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.rate = 1.0;
+    utterance.pitch = 1.0;
+
+    utterance.onend = () => setIsSpeaking(false);
+    utterance.onerror = () => setIsSpeaking(false);
+
+    setIsSpeaking(true);
+    window.speechSynthesis.speak(utterance);
+  };
+
   // Stream reader utility
-  const handleStreamResponse = async (
-    url: string,
-    body: Record<string, unknown>,
-    fallbackPlaceholder = 'Assistant is generating response...'
-  ) => {
+  const handleStreamResponse = async (url: string, body: Record<string, unknown>) => {
     setError(null);
     setLoading(true);
 
@@ -96,7 +130,7 @@ export function ChatPanel() {
                 updateMessageContent(botMsgId, parsed.token, parsed.isFallback);
               }
             } catch {
-              // Ignore partial JSON chunks
+              // Ignore partial JSON
             }
           }
         }
@@ -147,19 +181,42 @@ export function ChatPanel() {
     }
   };
 
+  const handleQuickPrompt = async (promptText: string) => {
+    setInput(promptText);
+    addMessage({ role: 'user', content: promptText });
+
+    if (activeMode === 'chat') {
+      await handleStreamResponse('/api/assistant/chat', {
+        sessionId,
+        messages: [{ role: 'user', content: promptText }],
+      });
+    } else if (activeMode === 'help') {
+      await handleStreamResponse('/api/assistant/help', {
+        sessionId,
+        query: promptText,
+      });
+    }
+  };
+
   return (
     <div className="flex flex-col h-full bg-white">
       {/* Sub-Header */}
       <div className="flex items-center justify-between px-4 py-2.5 border-b border-gray-100 bg-gray-50/80">
         <button
-          onClick={() => setActiveMode('home')}
-          className="flex items-center gap-1.5 text-xs font-semibold text-gray-600 hover:text-gray-900 transition-colors"
+          onClick={() => {
+            if (isSpeaking) {
+              window.speechSynthesis?.cancel();
+              setIsSpeaking(false);
+            }
+            setActiveMode('home');
+          }}
+          className="flex items-center gap-1.5 text-xs font-bold text-gray-600 hover:text-indigo-600 transition-colors cursor-pointer"
         >
           <ArrowLeft className="w-3.5 h-3.5" />
           <span>Back to Actions</span>
         </button>
 
-        <span className="text-[11px] font-bold uppercase tracking-wider text-indigo-600 px-2 py-0.5 rounded bg-indigo-50 border border-indigo-100">
+        <span className="text-[10px] font-extrabold uppercase tracking-wider text-indigo-600 px-2 py-0.5 rounded bg-indigo-50 border border-indigo-100">
           {activeMode === 'summary' && 'Queue Summary'}
           {activeMode === 'chat' && 'Talk to Me'}
           {activeMode === 'help' && 'Policy Knowledge (RAG)'}
@@ -167,36 +224,55 @@ export function ChatPanel() {
         </span>
       </div>
 
-      {/* Summary View specific rendering */}
+      {/* Mode 1: Summary View with Text & Out-Loud Speech Synthesis */}
       {activeMode === 'summary' && summary && (
-        <div className="p-4 overflow-y-auto space-y-3 flex-1">
-          <div className="p-3 rounded-xl bg-slate-900 text-white shadow-sm">
-            <div className="flex items-center justify-between text-xs mb-1">
-              <span className="text-indigo-400 font-semibold uppercase tracking-wider">
-                Priority Assessment
+        <div className="p-4 overflow-y-auto space-y-3 flex-1 text-xs">
+          {/* Summary Box with Read Aloud toggle */}
+          <div className="p-3.5 rounded-xl bg-slate-900 text-white shadow-sm space-y-2">
+            <div className="flex items-center justify-between text-xs">
+              <span className="text-indigo-400 font-bold uppercase tracking-wider flex items-center gap-1">
+                <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+                Urgency Triage Overview
               </span>
-              <span className="text-[10px] text-slate-400">
-                {summary.isFallback ? 'Deterministic Fallback' : 'AI Reasoning Verified'}
-              </span>
+              <button
+                onClick={() => handleToggleSpeech(summary.summaryText)}
+                className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-indigo-600 hover:bg-indigo-500 text-white transition-colors cursor-pointer"
+                title="Read Out Loud using Speech Synthesis"
+              >
+                {isSpeaking ? (
+                  <>
+                    <VolumeX className="w-3 h-3 text-rose-300" /> Stop Audio
+                  </>
+                ) : (
+                  <>
+                    <Volume2 className="w-3 h-3 text-amber-300" /> Read Out Loud
+                  </>
+                )}
+              </button>
             </div>
             <p className="text-xs text-slate-200 leading-relaxed font-sans">
               {summary.summaryText}
             </p>
+            <div className="flex items-center justify-between text-[10px] text-slate-400 pt-1 border-t border-slate-800">
+              <span>High Priority Items: {summary.urgentCount}</span>
+              <span>{summary.isFallback ? 'Deterministic Fallback' : 'Model Verified'}</span>
+            </div>
           </div>
 
-          <div className="text-xs font-bold text-gray-900 uppercase tracking-wider">
-            Prioritized Inspection Order
+          <div className="text-xs font-bold text-gray-900 uppercase tracking-wider flex items-center justify-between">
+            <span>Prioritized Inspection Order</span>
+            <span className="text-[10px] text-gray-500 font-normal">Ranked by Safety SLA</span>
           </div>
 
           <div className="space-y-2">
             {summary.prioritizedItems.map((item, idx) => (
               <div
                 key={item.id}
-                className="p-3 rounded-lg border border-gray-200 bg-white hover:border-indigo-200 transition-all text-xs"
+                className="p-3 rounded-lg border border-gray-200 bg-white hover:border-indigo-300 transition-all text-xs space-y-2 shadow-2xs"
               >
-                <div className="flex items-center justify-between mb-1">
+                <div className="flex items-center justify-between">
                   <span className="font-bold text-gray-900 flex items-center gap-1.5">
-                    <span className="w-4 h-4 rounded-full bg-gray-100 text-gray-700 flex items-center justify-center text-[10px]">
+                    <span className="w-4 h-4 rounded-full bg-indigo-50 text-indigo-700 font-bold flex items-center justify-center text-[10px]">
                       {idx + 1}
                     </span>
                     {item.title}
@@ -211,12 +287,31 @@ export function ChatPanel() {
                     {item.urgency}
                   </span>
                 </div>
-                <div className="text-[11px] text-gray-600 mt-1">
-                  <strong>Reason:</strong> {item.urgencyReason}
+
+                <div className="text-[11px] text-gray-600">
+                  <strong className="text-gray-800">Risk Assessment:</strong> {item.urgencyReason}
                 </div>
-                <div className="text-[11px] text-indigo-700 mt-1 font-medium flex items-center gap-1">
-                  <CheckCircle2 className="w-3 h-3 text-indigo-600 shrink-0" />
-                  Action: {item.recommendedAction}
+
+                <div className="flex items-center justify-between pt-1 border-t border-gray-100">
+                  <button
+                    onClick={() => {
+                      approveItem(item.id);
+                    }}
+                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded bg-emerald-50 hover:bg-emerald-100 text-emerald-800 font-bold text-[10px] cursor-pointer"
+                  >
+                    <Check className="w-3 h-3 text-emerald-600" /> Approve Now
+                  </button>
+                  <button
+                    onClick={() => {
+                      const found = useAssistantStore.getState().approvals.find((a) => a.id === item.id);
+                      if (found) setSelectedItem(found);
+                      setActiveTab('snapshot');
+                      showToast(`Targeting ${item.title} in 3D Scene View`);
+                    }}
+                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold text-[10px] cursor-pointer"
+                  >
+                    <Camera className="w-3 h-3 text-indigo-600" /> Inspect in 3D
+                  </button>
                 </div>
               </div>
             ))}
@@ -224,15 +319,16 @@ export function ChatPanel() {
         </div>
       )}
 
-      {/* Teach Me Step Controls */}
+      {/* Mode 2: Teach Me Workflow Step Controls */}
       {activeMode === 'teach' && (
-        <div className="p-3 border-b border-gray-100 bg-indigo-50/40">
+        <div className="p-3 border-b border-gray-100 bg-emerald-50/40">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-xs font-bold text-indigo-900">Training Workflow</span>
-            <span className="text-[11px] font-mono text-indigo-600 font-bold">
+            <span className="text-xs font-bold text-emerald-950">Operator Onboarding Tutorial</span>
+            <span className="text-[11px] font-mono text-emerald-700 font-extrabold">
               Step {teachStep} of 5
             </span>
           </div>
+
           <div className="flex items-center gap-1">
             {[1, 2, 3, 4, 5].map((s) => (
               <button
@@ -244,51 +340,105 @@ export function ChatPanel() {
                     step: s,
                   });
                 }}
-                className={`flex-1 py-1 rounded text-[11px] font-bold transition-all ${
+                className={`flex-1 py-1 rounded text-[11px] font-bold transition-all cursor-pointer ${
                   teachStep === s
-                    ? 'bg-indigo-600 text-white shadow-xs'
+                    ? 'bg-emerald-600 text-white shadow-xs'
                     : s < teachStep
-                    ? 'bg-indigo-200 text-indigo-900'
-                    : 'bg-white border border-gray-200 text-gray-500'
+                    ? 'bg-emerald-200 text-emerald-900'
+                    : 'bg-white border border-gray-200 text-gray-500 hover:bg-gray-50'
                 }`}
               >
                 {s}
               </button>
             ))}
           </div>
+
+          <div className="flex items-center justify-between mt-2 pt-2 border-t border-emerald-100 text-[11px]">
+            <button
+              disabled={teachStep === 1}
+              onClick={async () => {
+                const prev = Math.max(1, teachStep - 1);
+                setTeachStep(prev);
+                await handleStreamResponse('/api/assistant/teach', { sessionId, step: prev });
+              }}
+              className="flex items-center gap-1 text-gray-600 hover:text-gray-900 disabled:opacity-40 cursor-pointer"
+            >
+              <ChevronLeft className="w-3 h-3" /> Previous Step
+            </button>
+            <button
+              disabled={teachStep === 5}
+              onClick={async () => {
+                const next = Math.min(5, teachStep + 1);
+                setTeachStep(next);
+                await handleStreamResponse('/api/assistant/teach', { sessionId, step: next });
+              }}
+              className="flex items-center gap-1 font-bold text-emerald-700 hover:text-emerald-900 disabled:opacity-40 cursor-pointer"
+            >
+              Next Step <ChevronRight className="w-3 h-3" />
+            </button>
+          </div>
         </div>
       )}
 
-      {/* Messages list for Chat, Help, Teach */}
+      {/* Messages Feed (Chat, Help, Teach) */}
       {activeMode !== 'summary' && (
         <div className="flex-1 overflow-y-auto p-4 space-y-3">
           {messages.length === 0 && (
-            <div className="h-full flex flex-col items-center justify-center text-center p-6 text-gray-400">
+            <div className="h-full flex flex-col items-center justify-center text-center p-4 text-gray-400">
               <Lightbulb className="w-8 h-8 text-amber-400 mb-2" />
-              <p className="text-xs font-semibold text-gray-600">
-                {activeMode === 'chat' && 'Ask any question about your pending queue.'}
-                {activeMode === 'help' && 'Ask compliance or SLA policy questions.'}
-                {activeMode === 'teach' && 'Click a step above or ask how to review approvals.'}
+              <p className="text-xs font-bold text-gray-700">
+                {activeMode === 'chat' && 'Approvals Conversational Co-pilot'}
+                {activeMode === 'help' && 'Compliance & Operational Policy (RAG)'}
+                {activeMode === 'teach' && 'Step-by-step Interactive Training'}
               </p>
-              <div className="mt-3 flex flex-wrap gap-1.5 justify-center">
+              <p className="text-[11px] text-gray-500 mt-1 max-w-[260px]">
+                {activeMode === 'chat' && 'Ask any question regarding submitters, urgency, or scene coordinates.'}
+                {activeMode === 'help' && 'Answers grounded strictly in the 4-chunk facility maintenance policy.'}
+                {activeMode === 'teach' && 'Walk through the 5 approval steps or ask a follow-up question.'}
+              </p>
+
+              {/* Suggested Quick Question Chips */}
+              <div className="mt-4 flex flex-col gap-1.5 w-full max-w-[280px]">
                 {activeMode === 'chat' && (
-                  <button
-                    onClick={() => {
-                      setInput('Which of these items needs my attention first and why?');
-                    }}
-                    className="text-[11px] px-2.5 py-1 rounded-full bg-gray-100 text-gray-700 hover:bg-gray-200"
-                  >
-                    &ldquo;Which of these needs my attention first?&rdquo;
-                  </button>
+                  <>
+                    <button
+                      onClick={() => handleQuickPrompt('Which of these needs my attention first and why?')}
+                      className="text-[11px] text-left px-3 py-1.5 rounded-lg bg-gray-50 hover:bg-indigo-50 hover:text-indigo-700 border border-gray-200 transition-colors cursor-pointer"
+                    >
+                      &ldquo;Which of these needs attention first?&rdquo;
+                    </button>
+                    <button
+                      onClick={() => handleQuickPrompt('Who submitted the Level 2 drone patrol video?')}
+                      className="text-[11px] text-left px-3 py-1.5 rounded-lg bg-gray-50 hover:bg-indigo-50 hover:text-indigo-700 border border-gray-200 transition-colors cursor-pointer"
+                    >
+                      &ldquo;Who submitted the drone patrol video?&rdquo;
+                    </button>
+                  </>
                 )}
                 {activeMode === 'help' && (
+                  <>
+                    <button
+                      onClick={() => handleQuickPrompt('What is the SLA deadline for high urgency safety items?')}
+                      className="text-[11px] text-left px-3 py-1.5 rounded-lg bg-gray-50 hover:bg-indigo-50 hover:text-indigo-700 border border-gray-200 transition-colors cursor-pointer"
+                    >
+                      &ldquo;What is the SLA for high urgency items?&rdquo;
+                    </button>
+                    <button
+                      onClick={() => handleQuickPrompt('What are the drone patrol flight boundary requirements?')}
+                      className="text-[11px] text-left px-3 py-1.5 rounded-lg bg-gray-50 hover:bg-indigo-50 hover:text-indigo-700 border border-gray-200 transition-colors cursor-pointer"
+                    >
+                      &ldquo;Drone flight boundary guidelines?&rdquo;
+                    </button>
+                  </>
+                )}
+                {activeMode === 'teach' && (
                   <button
-                    onClick={() => {
-                      setInput('What is the SLA deadline for high urgency items?');
+                    onClick={async () => {
+                      await handleStreamResponse('/api/assistant/teach', { sessionId, step: 1 });
                     }}
-                    className="text-[11px] px-2.5 py-1 rounded-full bg-gray-100 text-gray-700 hover:bg-gray-200"
+                    className="text-[11px] px-3 py-1.5 rounded-lg bg-emerald-600 text-white font-bold hover:bg-emerald-700 transition-colors cursor-pointer"
                   >
-                    &ldquo;What is the SLA for high urgency items?&rdquo;
+                    Start Step 1: Queue Discovery
                   </button>
                 )}
               </div>
@@ -300,9 +450,9 @@ export function ChatPanel() {
           ))}
 
           {isLoading && !isStreaming && (
-            <div className="flex items-center gap-2 text-xs text-indigo-600 p-3 bg-indigo-50/50 rounded-lg animate-pulse">
+            <div className="flex items-center gap-2 text-xs text-indigo-600 p-3 bg-indigo-50/60 rounded-lg animate-pulse">
               <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-              <span>Analyzing queue and retrieving context...</span>
+              <span>Analyzing approval queue and policy chunks...</span>
             </div>
           )}
 
@@ -342,7 +492,7 @@ export function ChatPanel() {
           <button
             type="submit"
             disabled={!input.trim() || isLoading || isStreaming}
-            className="p-2 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+            className="p-2 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer"
           >
             <Send className="w-3.5 h-3.5" />
           </button>

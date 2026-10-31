@@ -67,3 +67,4 @@ export function StreamingMessage({ message }: StreamingMessageProps) {
     </div>
   );
 }
+

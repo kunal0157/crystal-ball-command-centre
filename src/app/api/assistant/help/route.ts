@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from '../../../../lib/next-server-shim.ts';
 import { HelpRequestSchema } from '../../../../lib/schemas.ts';
 import { retrieveRelevantChunks } from '../../../../lib/rag.ts';
 import { buildHelpSystemPrompt, buildHelpUserPrompt } from '../../../../prompts/help.ts';
