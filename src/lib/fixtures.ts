@@ -1,0 +1,48 @@
+import type { ApprovalItem } from './schemas.ts';
+
+export const APPROVALS_FIXTURE: ApprovalItem[] = [
+  {
+    id: 'app-001',
+    title: 'Site Patrol Onboarding & Checklists',
+    type: 'Folder',
+    submittedBy: 'Sam HelpAdmin',
+    date: 'Sep 18',
+    status: 'Pending Review',
+    path: 'My Site Patrol > My Site Patrol Card',
+    urgency: 'high',
+    priorityScore: 92,
+  },
+  {
+    id: 'app-002',
+    title: 'Level 2 Drone Patrol Video Demo',
+    type: 'Video',
+    submittedBy: 'Alex HelpAdmin',
+    date: 'Sep 18',
+    status: 'Pending Review',
+    path: 'Drawing-Videos > Drawing-Videos Card',
+    urgency: 'medium',
+    priorityScore: 68,
+  },
+  {
+    id: 'app-003',
+    title: 'Safety Equipment & Sensor Specs',
+    type: 'PDF',
+    submittedBy: 'Sam HelpAdmin',
+    date: 'Sep 18',
+    status: 'Pending Review',
+    path: 'Site Recordings > Site Recordings',
+    urgency: 'high',
+    priorityScore: 88,
+  },
+  {
+    id: 'app-004',
+    title: '360° Spatial Zone Layout & Camera Map',
+    type: 'Image',
+    submittedBy: 'Elena HelpAdmin',
+    date: 'Sep 18',
+    status: 'Pending Review',
+    path: 'Site Recordings > Site Recordings',
+    urgency: 'medium',
+    priorityScore: 74,
+  },
+];
